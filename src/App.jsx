@@ -11,7 +11,7 @@ function App() {
     <div>
       <h1>My Todos</h1>
       <ul>
-        {todos.map((item) => <li key={todos.id}>{item.title}</li>)}
+        {todos.map((item) => <li key={item.id}>{item.title}</li>)}
       </ul>
     </div>
   )
