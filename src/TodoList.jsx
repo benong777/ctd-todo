@@ -1,8 +1,8 @@
 function TodoList() {
     const todos = [
-      { id: 1, title: "Review course for the week"},
-      { id: 2, title: "Complete assignment"},
-      { id: 3, title: "Push code to GitHub"},
+      { id: 1, title: "Review resources"},
+      { id: 2, title: "Take notes"},
+      { id: 3, title: "Code out app"},
     ];
 
     return (
