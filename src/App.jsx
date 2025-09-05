@@ -2,11 +2,12 @@ import './App.css';
 import { useEffect, useState } from 'react';
 import TodoList from './features/TodoList/TodoList';
 import TodoForm from './features/TodoForm';
+import ErrorMessage from './utils/ErrorMessage';
 
 function App() {
   const [todoList, setTodoList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const url = `https://api.airtable.com/v0/${import.meta.env.VITE_BASE_ID}/${import.meta.env.VITE_TABLE_NAME}`;
@@ -54,9 +55,9 @@ function App() {
         });
 
         setTodoList([...fetchedRecords]);
-        setErrorMessage('');
+        setErrorMsg('');
       } catch(error) {
-          setErrorMessage(error.message);
+          setErrorMsg(error.message);
       } finally {
           setIsLoading(false);
       } 
@@ -112,10 +113,10 @@ function App() {
         savedTodo.isCompleted = false;
       }
       setTodoList([...todoList, savedTodo]);
-      setErrorMessage('');
+      setErrorMsg('');
     } catch(error) {
         console.log(error)
-        setErrorMessage(error.message)
+        setErrorMsg(error.message)
     } finally {
         setIsSaving(false);
     }
@@ -123,7 +124,6 @@ function App() {
 
   const completeTodo = async (id) => {
     const originalTodo = todoList.find((todo) => todo.id === id);
-    console.log('OriginalTodo:', originalTodo);
 
     const payload = {
       records: [
@@ -169,9 +169,9 @@ function App() {
         throw new Error('Error occurred while setting todo complete.');
       }
 
-      setErrorMessage('');
+      setErrorMsg('');
     } catch (error) {
-        setErrorMessage(`${error.message} Reverting todo...`);
+        setErrorMsg(`${error.message} Reverting todo...`);
         //-- Revert data when having data write error
         //-- Only need to change isComplete to false
         const restoredTodos = todoList.map((todo) => {
@@ -233,10 +233,10 @@ function App() {
         throw new Error('Error updating data.');
       }
 
-      setErrorMessage('');
+      setErrorMsg('');
     } catch(error) {
         console.log(error);
-        setErrorMessage(`${error.message} Reverting todo...`);
+        setErrorMsg(`${error.message} Reverting todo...`);
 
         //-- Error - revert todo
         const restoredTodos = todoList.map((todo) => {
@@ -253,7 +253,7 @@ function App() {
   }
 
   function dimissErrorHandler() {
-    setErrorMessage('');
+    setErrorMsg('');
   }
 
   return (
@@ -266,13 +266,11 @@ function App() {
         onUpdateTodo={updateTodo}
         isLoading={isLoading}
       />
-      {errorMessage && (
-        <div>
-          <hr />
-          <p>{errorMessage}</p>
-          <button type='button' onClick={dimissErrorHandler}>Dismiss</button>
-        </div>
-      )}
+      {errorMsg && 
+        <ErrorMessage
+          errorMsg={errorMsg}
+          dimissErrorHandler={dimissErrorHandler}
+        /> }
     </div>
   )
 }
