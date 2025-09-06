@@ -2,7 +2,13 @@ import './App.css';
 import { useEffect, useState } from 'react';
 import TodoList from './features/TodoList/TodoList';
 import TodoForm from './features/TodoForm';
-import ErrorMessage from './utils/ErrorMessage';
+
+//-- API Configs
+import { BASE_URL, AUTH_HEADER } from './utils/apiConfig';
+import checkHttpResponse from './utils/checkHttpResponse';
+
+//-- Utility functions
+import { recordMapper } from './utils/recordMapper';
 
 function App() {
   const [todoList, setTodoList] = useState([]);
@@ -10,51 +16,21 @@ function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const url = `https://api.airtable.com/v0/${import.meta.env.VITE_BASE_ID}/${import.meta.env.VITE_TABLE_NAME}`;
-  const token = `${import.meta.env.VITE_PAT}`;
-
   useEffect(() => {
     const fetchTodos = async() => {
       setIsLoading(true);
-      const options = {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      };
+      const options = { method: 'GET', headers: AUTH_HEADER };
 
       try {
-        const resp = await fetch(url, options);
-        //-- Error
-        if (!resp.ok) {
-          //-- Authentication Error
-          if (resp.status === 401) {
-            throw new Error('Not authorized. Please log in.');
-          }
-          const fetchData = await resp.json();
-          if (fetchData.error) {
-            throw new Error(fetchData.error);
-          }
-          //-- All other errors
-          throw new Error('Error occurred while fetching todo list.');
-        }
+        const resp = await fetch(BASE_URL, options);
+        //-- Check for errors in response
+        checkHttpResponse(resp);
 
         //-- Successful fetch
         const { records } = await resp.json();
 
-        const fetchedRecords = records.map((record) => {
-          const todo = {
-            id: record.id,
-            ...record.fields,
-          }
-          if (!record.fields.isCompleted) {
-            todo.isCompleted = false;
-          }
-          return todo;
-        });
-
-        setTodoList([...fetchedRecords]);
+        //-- Process each record data and update state
+        setTodoList(records.map(recordMapper));
         setErrorMsg('');
       } catch(error) {
           setErrorMsg(error.message);
@@ -83,30 +59,21 @@ function App() {
 
     const options = {
       method: 'POST',
-      headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-      },
+      headers: AUTH_HEADER,
       body: JSON.stringify(payload),
     }
 
     try {
       setIsSaving(true);
-      const resp = await fetch(url, options);
-      if (!resp.ok) {
-        //-- Authentication Error
-        if (resp.status === 401) {
-          throw new Error('Not authorized. Please log in.')
-        }
-        //-- All other errors
-        throw new Error('Error posting data');
-      }
+      const resp = await fetch(BASE_URL, options);
+      //-- Check for errors in response
+      checkHttpResponse(resp);
 
       const { records } = await resp.json();
 
       const savedTodo = {
-        ...records[0].fields,
         id: records[0].id,
+        ...records[0].fields,
       };
 
       if (!records[0].fields.isCompleted) {
@@ -139,10 +106,7 @@ function App() {
 
     const options = {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: AUTH_HEADER,
       body: JSON.stringify(payload),
     };
 
@@ -153,22 +117,14 @@ function App() {
       }
       return todo;
     });
-
     setTodoList([...updatedTodos])
 
     try {
       setIsSaving(true);
-      const resp = await fetch(url, options);
+      const resp = await fetch(BASE_URL, options);
 
-      if (!resp.ok) {
-        //-- Authentication error
-        if (resp.status === 401) {
-          throw new Error('Not authorized. Please log in.');
-        }
-        //-- All other errors
-        throw new Error('Error occurred while setting todo complete.');
-      }
-
+      //-- Check for errors in response
+      checkHttpResponse(resp);
       setErrorMsg('');
     } catch (error) {
         setErrorMsg(`${error.message} Reverting todo...`);
@@ -203,10 +159,7 @@ function App() {
 
     const options = {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: AUTH_HEADER,
       body: JSON.stringify(payload)
     }
 
@@ -222,17 +175,9 @@ function App() {
     try {
       setIsSaving(true);
 
-      const resp = await fetch(url, options);
-
-      if (!resp.ok) {
-        //-- Authentication Error
-        if (resp.status === 401) {
-          throw new Error('Not authorized. Please log in.');
-        }
-        //-- All other errors
-        throw new Error('Error updating data.');
-      }
-
+      const resp = await fetch(BASE_URL, options);
+      //-- Check for errors in response
+      checkHttpResponse(resp);
       setErrorMsg('');
     } catch(error) {
         console.log(error);
@@ -245,7 +190,6 @@ function App() {
           } 
           return todo;
         });
-
         setTodoList([...restoredTodos]);
     } finally {
         setIsSaving(false);
@@ -266,11 +210,13 @@ function App() {
         onUpdateTodo={updateTodo}
         isLoading={isLoading}
       />
-      {errorMsg && 
-        <ErrorMessage
-          errorMsg={errorMsg}
-          dimissErrorHandler={dimissErrorHandler}
-        /> }
+      {errorMsg && (
+        <div>
+          <hr />
+          <p>{errorMsg}</p>
+          <button type='button' onClick={dimissErrorHandler}>Dismiss</button>
+        </div> 
+      )}
     </div>
   )
 }
