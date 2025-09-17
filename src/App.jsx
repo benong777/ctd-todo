@@ -1,5 +1,5 @@
 import './App.css';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import TodoList from './features/TodoList/TodoList';
 import TodoForm from './features/TodoForm';
 import TodosViewForm from './features/TodosViewForm';
@@ -10,17 +10,18 @@ import checkHttpResponse from './utils/checkHttpResponse';
 
 //-- Utility functions
 import { recordMapper } from './utils/recordMapper';
+// import encodeUrl from './utils/encodeUrl';
 
-const encodeUrl = ({ sortField, sortDirection, queryString }) => {
-  let sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
-  let searchQuery = ('');
+// const encodeUrl = ({ sortField, sortDirection, queryString }) => {
+//   let sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
+//   let searchQuery = ('');
 
-  if (queryString) {
-    searchQuery = `&filterByFormula=SEARCH("${queryString}",+title)`
-  }
+//   if (queryString) {
+//     searchQuery = `&filterByFormula=SEARCH("${queryString}",+title)`
+//   }
   
-  return encodeURI(`${BASE_URL}?${sortQuery}${searchQuery}`);
-}
+//   return encodeURI(`${BASE_URL}?${sortQuery}${searchQuery}`);
+// }
 
 function App() {
   const [todoList, setTodoList] = useState([]);
@@ -32,13 +33,25 @@ function App() {
   const [sortDirection, setSortDirection] = useState('desc');
   const [queryString, setQueryString] = useState('');
 
+  const encodeUrl = useCallback(() => {
+    let sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
+    let searchQuery = ('');
+
+    if (queryString) {
+      searchQuery = `&filterByFormula=SEARCH("${queryString}",+title)`
+    }
+
+    return encodeURI(`${BASE_URL}?${sortQuery}${searchQuery}`);
+  },[sortField, sortDirection, queryString]);
+
   useEffect(() => {
     const fetchTodos = async() => {
       setIsLoading(true);
       const options = { method: 'GET', headers: AUTH_HEADER };
 
       try {
-        const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
+        // const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
+        const resp = await fetch(encodeUrl(), options);
         //-- Check for errors in response
         checkHttpResponse(resp);
 
@@ -69,6 +82,7 @@ function App() {
         {
           fields: {
             title: newTodo,
+            isCompleted: false, // Can we assume it to be false?
           }
         }
       ]
@@ -82,7 +96,8 @@ function App() {
 
     try {
       setIsSaving(true);
-      const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
+      // const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
+      const resp = await fetch(encodeUrl(), options);
       //-- Check for errors in response
       checkHttpResponse(resp);
 
@@ -99,7 +114,6 @@ function App() {
       setTodoList([...todoList, savedTodo]);
       setErrorMsg('');
     } catch(error) {
-        console.log(error)
         setErrorMsg(error.message)
     } finally {
         setIsSaving(false);
@@ -138,7 +152,8 @@ function App() {
 
     try {
       setIsSaving(true);
-      const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
+      // const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
+      const resp = await fetch(encodeUrl(), options);
 
       //-- Check for errors in response
       checkHttpResponse(resp);
@@ -183,29 +198,29 @@ function App() {
     //-- Optimistic update
     const updatedTodos = todoList.map((todo)=> {
       if (todo.id === editedTodo.id) {
-        return editedTodo;
+        return {...editedTodo};
       }
-      return todo;
+      return {...todo};
     })
     setTodoList([...updatedTodos]);
 
     try {
       setIsSaving(true);
+      // const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
+      const resp = await fetch(encodeUrl(), options);
 
-      const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
       //-- Check for errors in response
       checkHttpResponse(resp);
       setErrorMsg('');
     } catch(error) {
-        console.log(error);
         setErrorMsg(`${error.message} Reverting todo...`);
 
         //-- Error - revert todo
         const restoredTodos = todoList.map((todo) => {
           if (todo.id === originalTodo.id) {
-            return originalTodo;
+            return {...originalTodo};
           } 
-          return todo;
+          return {...todo};
         });
         setTodoList([...restoredTodos]);
     } finally {

@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 const TodosViewForm = ({
   sortDirection,
   setSortDirection,
@@ -6,6 +8,18 @@ const TodosViewForm = ({
   queryString,
   setQueryString,
   }) => {
+
+  const [localQueryString, setLocalQueryString] = useState(queryString);
+
+  //-- Add delay (500ms here) before setting queryString and submitting an API call.
+  //-- Sending a network call for every character typed can use up API and network resources.
+  useEffect(() => {
+    const debounce = setTimeout(
+      () => setQueryString(localQueryString),
+      500);
+    
+    return () => clearTimeout(debounce);
+  }, [localQueryString, setQueryString]);
 
   const preventRefresh = (e) => {
     e.preventDefault();
@@ -19,10 +33,10 @@ const TodosViewForm = ({
           id='search-input'
           name='searchInput'
           type='text'
-          value={queryString}
-          onChange={(e) => setQueryString(e.target.value)}
+          value={localQueryString}
+          onChange={(e) => setLocalQueryString(e.target.value)}
         />
-        <button type='button' onClick={() => setQueryString('')}>Clear</button>
+        <button type='button' onClick={() => setLocalQueryString('')}>Clear</button>
       </div>
 
       <div>
