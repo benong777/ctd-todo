@@ -10,18 +10,10 @@ import checkHttpResponse from './utils/checkHttpResponse';
 
 //-- Utility functions
 import { recordMapper } from './utils/recordMapper';
-// import encodeUrl from './utils/encodeUrl';
 
-// const encodeUrl = ({ sortField, sortDirection, queryString }) => {
-//   let sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
-//   let searchQuery = ('');
-
-//   if (queryString) {
-//     searchQuery = `&filterByFormula=SEARCH("${queryString}",+title)`
-//   }
-  
-//   return encodeURI(`${BASE_URL}?${sortQuery}${searchQuery}`);
-// }
+//-- Styles
+import { StyledButton } from './components/styles/Button.styles';
+import classes from './App.module.css';
 
 function App() {
   const [todoList, setTodoList] = useState([]);
@@ -50,7 +42,6 @@ function App() {
       const options = { method: 'GET', headers: AUTH_HEADER };
 
       try {
-        // const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
         const resp = await fetch(encodeUrl(), options);
         //-- Check for errors in response
         checkHttpResponse(resp);
@@ -96,7 +87,6 @@ function App() {
 
     try {
       setIsSaving(true);
-      // const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
       const resp = await fetch(encodeUrl(), options);
       //-- Check for errors in response
       checkHttpResponse(resp);
@@ -152,7 +142,6 @@ function App() {
 
     try {
       setIsSaving(true);
-      // const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
       const resp = await fetch(encodeUrl(), options);
 
       //-- Check for errors in response
@@ -206,7 +195,6 @@ function App() {
 
     try {
       setIsSaving(true);
-      // const resp = await fetch(encodeUrl({ sortField, sortDirection, queryString }), options);
       const resp = await fetch(encodeUrl(), options);
 
       //-- Check for errors in response
@@ -235,28 +223,36 @@ function App() {
   return (
     <div>
       <h1>Todo List</h1>
-      <TodoForm onAddTodo={addTodo} isSaving={isSaving} />
-      <TodoList
-        todoList={todoList}
-        onCompleteTodo={completeTodo}
-        onUpdateTodo={updateTodo}
-        isLoading={isLoading}
-      />
+      <div className='app-columns'>
+        <div id='menu-column'>
+          <TodosViewForm 
+            sortDirection={sortDirection}
+            setSortDirection={setSortDirection}
+            sortField={sortField}
+            setSortField={setSortField}
+            queryString={queryString}
+            setQueryString={setQueryString}
+          />
+        </div>
+        <div id='content-column'>
+          <TodoForm onAddTodo={addTodo} isSaving={isSaving} />
+          <TodoList
+            todoList={todoList}
+            onCompleteTodo={completeTodo}
+            onUpdateTodo={updateTodo}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
       <hr />
-      <TodosViewForm 
-        sortDirection={sortDirection}
-        setSortDirection={setSortDirection}
-        sortField={sortField}
-        setSortField={setSortField}
-        queryString={queryString}
-        setQueryString={setQueryString}
-      />
       {errorMsg && (
-        <div>
-          <hr />
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div className={classes.errorMessage}>
           <p>{errorMsg}</p>
-          <button type='button' onClick={dimissErrorHandler}>Dismiss</button>
+          <StyledButton type='button' onClick={dimissErrorHandler}>Dismiss</StyledButton>
         </div> 
+
+        </div>
       )}
     </div>
   )

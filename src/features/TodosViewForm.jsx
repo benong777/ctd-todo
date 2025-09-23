@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { StyledButton } from "../components/styles/Button.styles";
+import styled from 'styled-components';
 
 const TodosViewForm = ({
   sortDirection,
@@ -25,6 +27,15 @@ const TodosViewForm = ({
     e.preventDefault();
   }
 
+  //-- Styled Components
+  const StyledSortContainer = styled.div`
+    display: flex;
+    align-items: center;
+    label {
+      margin-right: 1em;
+    }
+  `;
+
   return(
     <form onSubmit={preventRefresh}>
       <div>
@@ -36,31 +47,38 @@ const TodosViewForm = ({
           value={localQueryString}
           onChange={(e) => setLocalQueryString(e.target.value)}
         />
-        <button type='button' onClick={() => setLocalQueryString('')}>Clear</button>
+        <StyledButton
+          type='button'
+          onClick={() => setLocalQueryString('')}>Clear
+        </StyledButton>
       </div>
 
       <div>
-        <label htmlFor='sort-field-select'>Sort by</label>
-        <select
-          id='sort-field-select'
-          name='sortFieldSelect'
-          value={sortField}
-          onChange={(e) => setSortField(e.target.value)}
-        >
-          <option value='title'>Title</option>
-          <option value='createdTime'>Time added</option>
-        </select>
+        <StyledSortContainer>
+          <label htmlFor='sort-field-select'>Sort by</label>
+          <select
+            id='sort-field-select'
+            name='sortFieldSelect'
+            value={sortField}
+            onChange={(e) => setSortField(e.target.value)}
+          >
+            <option value='title'>Title</option>
+            <option value='createdTime'>Time added</option>
+          </select>
+        </StyledSortContainer>
 
-        <label htmlFor='sort-direction-select'>Direction</label>
-        <select 
-          id='sort-direction-select'
-          name='sortDirectionSelect'
-          value={sortDirection}
-          onChange={(e) => setSortDirection(e.target.value)}
-        >
-          <option value='asc'>Ascending</option>
-          <option value='desc'>Descending</option>
-        </select>
+        <StyledSortContainer>
+          <label htmlFor='sort-direction-select'>Direction</label>
+          <select 
+            id='sort-direction-select'
+            name='sortDirectionSelect'
+            value={sortDirection}
+            onChange={(e) => setSortDirection(e.target.value)}
+          >
+            <option value='asc'>Ascending</option>
+            <option value='desc'>Descending</option>
+          </select>
+        </StyledSortContainer>
       </div>
     </form>
   );
