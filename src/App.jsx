@@ -1,5 +1,5 @@
 import './App.css';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useReducer } from 'react';
 import TodoList from './features/TodoList/TodoList';
 import TodoForm from './features/TodoForm';
 import TodosViewForm from './features/TodosViewForm';
@@ -15,11 +15,16 @@ import { recordMapper } from './utils/recordMapper';
 import { StyledButton } from './components/styles/Button.styles';
 import classes from './App.module.css';
 
+//-- Hooks
+import { initialState, actions, reducer } from './reducers/todos.reducer';
+
 function App() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+
   const [todoList, setTodoList] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
+  // const [errorMsg, setErrorMsg] = useState('');
+  // const [isSaving, setIsSaving] = useState(false);
 
   const [sortField, setSortField] = useState('createdTime');
   const [sortDirection, setSortDirection] = useState('desc');
@@ -38,7 +43,8 @@ function App() {
 
   useEffect(() => {
     const fetchTodos = async() => {
-      setIsLoading(true);
+      // setIsLoading(true);
+      dispatch({ type: actions.SET_LOADING, payload: true });
       const options = { method: 'GET', headers: AUTH_HEADER };
 
       try {
@@ -51,11 +57,14 @@ function App() {
 
         //-- Process each record data and update state
         setTodoList(records.map(recordMapper));
-        setErrorMsg('');
+        // setErrorMsg('');
+        dispatch({ type: actions.SET_ERROR_MESSAGE, payload: '' });
       } catch(error) {
-          setErrorMsg(error.message);
+          // setErrorMsg(error.message);
+          dispatch({ type: actions.SET_ERROR_MESSAGE, payload: error.message });
       } finally {
-          setIsLoading(false);
+          // setIsLoading(false);
+          dispatch({ type: actions.SET_LOADING, payload: false });
       } 
     }
     fetchTodos();
@@ -86,7 +95,8 @@ function App() {
     }
 
     try {
-      setIsSaving(true);
+      // setIsSaving(true);
+      dispatch({ type: actions.SET_SAVING, payload: true });
       const resp = await fetch(encodeUrl(), options);
       //-- Check for errors in response
       checkHttpResponse(resp);
@@ -102,11 +112,14 @@ function App() {
         savedTodo.isCompleted = false;
       }
       setTodoList([...todoList, savedTodo]);
-      setErrorMsg('');
+      // setErrorMsg('');
+      dispatch({ type: actions.SET_ERROR_MESSAGE, payload: '' });
     } catch(error) {
-        setErrorMsg(error.message)
+        // setErrorMsg(error.message)
+        dispatch({ type: actions.SET_ERROR_MESSAGE, payload: error.message });
     } finally {
-        setIsSaving(false);
+        // setIsSaving(false);
+        dispatch({ type: actions.SET_SAVING, payload: false });
     }
   }
 
@@ -141,14 +154,17 @@ function App() {
     setTodoList([...updatedTodos])
 
     try {
-      setIsSaving(true);
+      // setIsSaving(true);
+      dispatch({ type: actions.SET_SAVING, payload: true });
       const resp = await fetch(encodeUrl(), options);
 
       //-- Check for errors in response
       checkHttpResponse(resp);
-      setErrorMsg('');
+      // setErrorMsg('');
+      dispatch({ type: actions.SET_ERROR_MESSAGE, payload: '' });
     } catch (error) {
-        setErrorMsg(`${error.message} Reverting todo...`);
+        // setErrorMsg(`${error.message} Reverting todo...`);
+        dispatch({ type: actions.SET_ERROR_MESSAGE, payload: `${error.message} Reverting todo...` });
         //-- Revert data when having data write error
         //-- Only need to change isComplete to false
         const restoredTodos = todoList.map((todo) => {
@@ -159,7 +175,8 @@ function App() {
         });
         setTodoList([...restoredTodos]);
     } finally {
-        setIsSaving(false);
+        // setIsSaving(false);
+        dispatch({ type: actions.SET_SAVING, payload: false });
     }
   }
 
@@ -194,14 +211,17 @@ function App() {
     setTodoList([...updatedTodos]);
 
     try {
-      setIsSaving(true);
+      // setIsSaving(true);
+      dispatch({ type: actions.SET_SAVING, payload: true });
       const resp = await fetch(encodeUrl(), options);
 
       //-- Check for errors in response
       checkHttpResponse(resp);
-      setErrorMsg('');
+      // setErrorMsg('');
+      dispatch({ type: actions.SET_ERROR_MESSAGE, payload: '' });
     } catch(error) {
-        setErrorMsg(`${error.message} Reverting todo...`);
+        // setErrorMsg(`${error.message} Reverting todo...`);
+        dispatch({ type: actions.SET_ERROR_MESSAGE, payload: `${error.message} Reverting todo...` });
 
         //-- Error - revert todo
         const restoredTodos = todoList.map((todo) => {
@@ -212,12 +232,14 @@ function App() {
         });
         setTodoList([...restoredTodos]);
     } finally {
-        setIsSaving(false);
+        // setIsSaving(false);
+        dispatch({ type: actions.SET_SAVING, payload: false });
     }
   }
 
   function dimissErrorHandler() {
-    setErrorMsg('');
+    // setErrorMsg('');
+    dispatch({ type: actions.SET_ERROR_MESSAGE, payload: '' });
   }
 
   return (
@@ -235,20 +257,20 @@ function App() {
           />
         </div>
         <div id='content-column'>
-          <TodoForm onAddTodo={addTodo} isSaving={isSaving} />
+          <TodoForm onAddTodo={addTodo} isSaving={state.isSaving} />
           <TodoList
             todoList={todoList}
             onCompleteTodo={completeTodo}
             onUpdateTodo={updateTodo}
-            isLoading={isLoading}
+            isLoading={state.isLoading}
           />
         </div>
       </div>
       <hr />
-      {errorMsg && (
+      {state.errorMsg && (
         <div style={{ display: 'flex', justifyContent: 'center' }}>
         <div className={classes.errorMessage}>
-          <p>{errorMsg}</p>
+          <p>{state.errorMsg}</p>
           <StyledButton type='button' onClick={dimissErrorHandler}>Dismiss</StyledButton>
         </div> 
 
