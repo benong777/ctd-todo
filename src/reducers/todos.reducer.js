@@ -5,70 +5,81 @@ export const initialState = {
   isSaving: false
 };
 
-// export const actions = {
-//   SET_TODOLIST: 'SET_TODOLIST',
-//   SET_LOADING: 'SET_LOADING',
-//   SET_ERROR_MESSAGE: 'SET_ERROR_MESSAGE',
-//   SET_SAVING: 'SET_SAVING',
-// }
-
 export const actions = {
-    //actions in useEffect that loads todos
+    //-- Load Todos (in useEffect)
     fetchTodos: 'fetchTodos',
     loadTodos: 'loadTodos',
-    //found in useEffect and addTodo to handle failed requests
+    //-- Handle failed requests (in useEffect and addTodo)
     setLoadError: 'setLoadError',
-    //actions found in addTodo
+    //-- addTodos actions found in addTodo
     startRequest: 'startRequest',
     addTodo: 'addTodo',
     endRequest: 'endRequest',
-    //found in helper functions 
     updateTodo: 'updateTodo',
     completeTodo: 'completeTodo',
-    //reverts todos when requests fail
+    //-- Reverts todos when requests fail
     revertTodo: 'revertTodo',
-    //action on Dismiss Error button
+    //-- Dismiss Error button
     clearError: 'clearError',
 };
 
 export function reducer(state=initialState, action) {
   switch(action.type) {
     case actions.fetchTodos: 
-      return { ...state };
+      return { ...state, isLoading: true, errorMsg: '' };
     case actions.loadTodos:
-      return { ...state };
+      return { ...state, todoList: action.payload, isLoading: false, errorMsg: '' };
     case actions.setLoadError:
-      return { ...state };
+      return { ...state, isLoading: false, errorMsg: action.payload };
     case actions.startRequest:
-      return { ...state };
+      return { ...state, isSaving: true, errorMsg: '' };
+
     case actions.addTodo:
-      return { ...state };
+      return { ...state, todoList: [...state.todoList, action.payload], errorMsg: '' };
     case actions.endRequest:
-      return { ...state };
+      return { ...state, isSaving: false };
+
     case actions.updateTodo:
-      return { ...state };
+      return {
+        ...state,
+        todoList: state.todoList.map(todo => {
+          return todo.id === action.payload.id ? { ...action.payload } : todo;
+        }),
+        errorMsg: ''
+      };
+
     case actions.completeTodo:
-      return { ...state };
+      return {
+        ...state,
+        todoList: state.todoList.map((todo) => {
+          return (todo.id === action.payload) ? {...todo, isCompleted: true } : todo;
+        }),
+        errorMsg: ''
+      };
+
     case actions.revertTodo:
-      return { ...state };
+      if (typeof action.payload === 'object') {
+        //-- Revert entire todo object (for updateTodo revert)
+        return {
+          ...state,
+          todoList: state.todoList.map((todo) => {
+            return (todo.id === action.payload.id) ?  {...action.payload} : todo
+          }),
+        };
+      } else {
+        //-- Revert only isCompleted field (for completeTodo revert)
+        return {
+          ...state,
+          todoList: state.todoList.map((todo) => {
+            return (todo.id === action.payload) ?  { ...todo, isCompleted: false } : todo
+          }),
+        };
+      }
+
+    //-- Dismiss error button
     case actions.clearError:
-      return { ...state };
+      return { ...state, errorMsg: '' };
     default:
-      return { ...state };
+      return state;
   }
 };
-
-// export function reducer(state=initialState, action){
-//   switch(action.type) {
-//     case actions.SET_TODOLIST:
-//       return { ...state, todoList: action.payload };
-//     case actions.SET_LOADING:
-//       return { ...state, isLoading: action.payload };
-//     case actions.SET_ERROR_MESSAGE:
-//       return { ...state, errorMsg: action.payload};
-//     case actions.SET_SAVING:
-//       return { ...state, isSaving: action.payload};
-//     default:
-//       return state; 
-//   }
-// }
