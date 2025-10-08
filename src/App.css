@@ -21,6 +21,12 @@ body, #root {
   flex: 80%;
   padding-left: 10rem;
 }
+#paginationControls {
+  display: flex;
+  direction: column;
+  align-items: flex-end;
+  border: 1.5px solid red;
+}
 
 
 /* Headings */

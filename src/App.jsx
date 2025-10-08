@@ -1,8 +1,10 @@
 import './App.css';
+import { useLocation, useSearchParams, useNavigate, Routes, Route, useParams } from 'react-router';
 import { useCallback, useEffect, useState, useReducer } from 'react';
-import TodoList from './features/TodoList/TodoList';
-import TodoForm from './features/TodoForm';
-import TodosViewForm from './features/TodosViewForm';
+import TodosPage from './pages';
+import Header from './shared/header';
+import AboutPage from './pages/about';
+import NotFound from './pages/notFound';
 
 //-- API Configs
 import { BASE_URL, AUTH_HEADER } from './utils/apiConfig';
@@ -23,11 +25,47 @@ import {
 } from './reducers/todos.reducer';
 
 function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [todoState, dispatch] = useReducer(todosReducer, initialTodosState);
 
+  const [title, setTitle] = useState('');
   const [sortField, setSortField] = useState('createdTime');
   const [sortDirection, setSortDirection] = useState('desc');
   const [queryString, setQueryString] = useState('');
+
+  //-- Pagination variables
+  const filteredTodoList = todoState.todoList.filter((item) => item.isCompleted === false);
+  const itemsPerPage = 15;
+  const currentPage = parseInt(searchParams.get('page') || '1', 10);  // default: 1, the '10' is the radix for the parseInt
+  const indexOfFirstTodo = (currentPage - 1) * itemsPerPage;
+  const indexOfLastEntry = currentPage * itemsPerPage;
+  const currTodoList = filteredTodoList.slice(indexOfFirstTodo, indexOfLastEntry);
+  // const totalPages = Math.ceil(todoState.todoList.length/itemsPerPage);
+  const totalPages = Math.ceil(filteredTodoList.length/itemsPerPage);
+
+  console.log('indexOfFirstTodo:', indexOfFirstTodo);
+  console.log('totalPages:', totalPages);
+  console.log('currentPage:', currentPage);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setSearchParams({ page: (currentPage - 1).toString() });
+    }
+    console.log('Previous page set')
+    console.log('Current page:', currentPage);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setSearchParams({ page: (currentPage + 1).toString() });
+    }
+    console.log('Next page set')
+    console.log('Current page:', currentPage);
+  };
 
   const encodeUrl = useCallback(() => {
     let sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
@@ -39,6 +77,27 @@ function App() {
 
     return encodeURI(`${BASE_URL}?${sortQuery}${searchQuery}`);
   },[sortField, sortDirection, queryString]);
+
+  //-- Ensure currentPage is valid at render
+  useEffect(() => {
+    // Checks totalPages first before evaluating the 'if' statement inside:
+    // to prevent it from automatically navigating to '/' when user refreshes page or navigating directly to a url that includes a page param
+    if (totalPages > 0) {
+      if (!(Number.isInteger(currentPage) && currentPage >= 1 && currentPage <= totalPages)) {
+        navigate('/');
+      }
+    }
+  }, [currentPage, totalPages, navigate]);
+
+  useEffect(() => {
+    if (location.pathname === '/') {
+      setTitle('Todo List');
+    } else if (location.pathname === '/about') {
+      setTitle('About');
+    } else {
+      setTitle('Not found.')
+    }
+  }, [location]);
 
   useEffect(() => {
     const fetchTodos = async() => {
@@ -197,36 +256,44 @@ function App() {
 
   return (
     <div>
-      <h1>Todo List</h1>
-      <div className='app-columns'>
-        <div id='menu-column'>
-          <TodosViewForm 
-            sortDirection={sortDirection}
-            setSortDirection={setSortDirection}
-            sortField={sortField}
-            setSortField={setSortField}
-            queryString={queryString}
-            setQueryString={setQueryString}
-          />
-        </div>
-        <div id='content-column'>
-          <TodoForm onAddTodo={addTodo} isSaving={todoState.isSaving} />
-          <TodoList
-            todoList={todoState.todoList}
-            onCompleteTodo={completeTodo}
-            onUpdateTodo={updateTodo}
-            isLoading={todoState.isLoading}
-          />
-        </div>
-      </div>
-      <hr />
+      <Header title={title}/>
+      <Routes>
+        <Route path="/"
+          element={
+            <div>
+              <TodosPage 
+                todoList={currTodoList}
+                isSaving={todoState.isSaving}
+                isLoading={todoState.isLoading}
+                sortDirection={sortDirection}
+                setSortDirection={setSortDirection}
+                sortField={sortField}
+                setSortField={setSortField}
+                queryString={queryString}
+                setQueryString={setQueryString}
+                addTodo={addTodo}
+                completeTodo={completeTodo}
+                updateTodo={updateTodo}
+                onPreviousPage={handlePreviousPage}
+                onNextPage={handleNextPage}
+                currentPage={currentPage}
+                totalPages={totalPages}
+              />
+            </div>
+          }
+        />
+        <Route path="/about" element={<AboutPage/>} />
+        <Route path="*" element={<NotFound/>} />
+      </Routes>
+
+
       {todoState.errorMsg && (
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div className={classes.errorMessage}>
-          <p>{todoState.errorMsg}</p>
-          <StyledButton type='button' onClick={dimissErrorHandler}>Dismiss</StyledButton>
-        </div> 
-
+          <hr />
+          <div className={classes.errorMessage}>
+            <p>{todoState.errorMsg}</p>
+            <StyledButton type='button' onClick={dimissErrorHandler}>Dismiss</StyledButton>
+          </div> 
         </div>
       )}
     </div>

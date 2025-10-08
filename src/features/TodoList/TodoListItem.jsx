@@ -4,6 +4,15 @@ import styled from "styled-components";
 import { StyledButton } from "../../components/styles/Button.styles";
 import classes from './TodoListItem.module.css';
 
+//-- Styled Components
+const StyledListItem = styled.div`
+  margin-top: .5em;
+  font-size: 1.2em;
+  span {
+    margin-left: .3em;
+  }
+`;
+
 function TodoListItem ({ todo, onCompleteTodo, onUpdateTodo }) {
   const [isEditing, setIsEditing] = useState(false);
   const [workingTitle, setWorkingTitle] = useState(todo.title);
@@ -34,14 +43,6 @@ function TodoListItem ({ todo, onCompleteTodo, onUpdateTodo }) {
     setIsEditing(false);
   }
 
-  //-- Styled Components
-  const StyledListItem = styled.div`
-    margin-top: .5em;
-    font-size: 1.2em;
-    span {
-      margin-left: .3em;
-  }
-  `
   return (
     <li>
       <form onSubmit={handleUpdate}>

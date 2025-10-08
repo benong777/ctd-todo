@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { StyledButton } from "../components/styles/Button.styles";
 import styled from 'styled-components';
 
+//-- Styled Components
+const StyledSortContainer = styled.div`
+  display: flex;
+  align-items: center;
+  label {
+    margin-right: 1em;
+  }
+`;
+
 const TodosViewForm = ({
   sortDirection,
   setSortDirection,
@@ -26,15 +35,6 @@ const TodosViewForm = ({
   const preventRefresh = (e) => {
     e.preventDefault();
   }
-
-  //-- Styled Components
-  const StyledSortContainer = styled.div`
-    display: flex;
-    align-items: center;
-    label {
-      margin-right: 1em;
-    }
-  `;
 
   return(
     <form onSubmit={preventRefresh}>
