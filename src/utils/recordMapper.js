@@ -1,3 +1,4 @@
+//-- Convert each todo into a proper object
 export const recordMapper = (record) => {
   const todo = {
     id: record.id,

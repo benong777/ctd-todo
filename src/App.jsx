@@ -1,8 +1,10 @@
 import './App.css';
-import { useCallback, useEffect, useState } from 'react';
-import TodoList from './features/TodoList/TodoList';
-import TodoForm from './features/TodoForm';
-import TodosViewForm from './features/TodosViewForm';
+import { useLocation, useSearchParams, useNavigate, Routes, Route, useParams } from 'react-router';
+import { useCallback, useEffect, useState, useReducer } from 'react';
+import TodosPage from './pages';
+import Header from './shared/header';
+import AboutPage from './pages/about';
+import NotFound from './pages/notFound';
 
 //-- API Configs
 import { BASE_URL, AUTH_HEADER } from './utils/apiConfig';
@@ -15,15 +17,55 @@ import { recordMapper } from './utils/recordMapper';
 import { StyledButton } from './components/styles/Button.styles';
 import classes from './App.module.css';
 
-function App() {
-  const [todoList, setTodoList] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+//-- Hooks
+import {
+  reducer as todosReducer,
+  actions as todoActions,
+  initialState as initialTodosState,
+} from './reducers/todos.reducer';
 
+function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [todoState, dispatch] = useReducer(todosReducer, initialTodosState);
+
+  const [title, setTitle] = useState('');
   const [sortField, setSortField] = useState('createdTime');
   const [sortDirection, setSortDirection] = useState('desc');
   const [queryString, setQueryString] = useState('');
+
+  //-- Pagination variables
+  const filteredTodoList = todoState.todoList.filter((item) => item.isCompleted === false);
+  const itemsPerPage = 15;
+  const currentPage = parseInt(searchParams.get('page') || '1', 10);  // default: 1, the '10' is the radix for the parseInt
+  const indexOfFirstTodo = (currentPage - 1) * itemsPerPage;
+  const indexOfLastEntry = currentPage * itemsPerPage;
+  const currTodoList = filteredTodoList.slice(indexOfFirstTodo, indexOfLastEntry);
+  // const totalPages = Math.ceil(todoState.todoList.length/itemsPerPage);
+  const totalPages = Math.ceil(filteredTodoList.length/itemsPerPage);
+
+  console.log('indexOfFirstTodo:', indexOfFirstTodo);
+  console.log('totalPages:', totalPages);
+  console.log('currentPage:', currentPage);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setSearchParams({ page: (currentPage - 1).toString() });
+    }
+    console.log('Previous page set')
+    console.log('Current page:', currentPage);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setSearchParams({ page: (currentPage + 1).toString() });
+    }
+    console.log('Next page set')
+    console.log('Current page:', currentPage);
+  };
 
   const encodeUrl = useCallback(() => {
     let sortQuery = `sort[0][field]=${sortField}&sort[0][direction]=${sortDirection}`;
@@ -36,9 +78,30 @@ function App() {
     return encodeURI(`${BASE_URL}?${sortQuery}${searchQuery}`);
   },[sortField, sortDirection, queryString]);
 
+  //-- Ensure currentPage is valid at render
+  useEffect(() => {
+    // Checks totalPages first before evaluating the 'if' statement inside:
+    // to prevent it from automatically navigating to '/' when user refreshes page or navigating directly to a url that includes a page param
+    if (totalPages > 0) {
+      if (!(Number.isInteger(currentPage) && currentPage >= 1 && currentPage <= totalPages)) {
+        navigate('/');
+      }
+    }
+  }, [currentPage, totalPages, navigate]);
+
+  useEffect(() => {
+    if (location.pathname === '/') {
+      setTitle('Todo List');
+    } else if (location.pathname === '/about') {
+      setTitle('About');
+    } else {
+      setTitle('Not found.')
+    }
+  }, [location]);
+
   useEffect(() => {
     const fetchTodos = async() => {
-      setIsLoading(true);
+      dispatch({ type: todoActions.fetchTodos });
       const options = { method: 'GET', headers: AUTH_HEADER };
 
       try {
@@ -49,14 +112,11 @@ function App() {
         //-- Successful fetch
         const { records } = await resp.json();
 
-        //-- Process each record data and update state
-        setTodoList(records.map(recordMapper));
-        setErrorMsg('');
+        //-- Convert each record into a proper todo object and update state
+        dispatch({ type: todoActions.loadTodos, payload: records.map(recordMapper) })
       } catch(error) {
-          setErrorMsg(error.message);
-      } finally {
-          setIsLoading(false);
-      } 
+          dispatch({ type: todoActions.setLoadError, payload: error.message })
+      }
     }
     fetchTodos();
 
@@ -65,7 +125,7 @@ function App() {
     //   // cleanup function
     // };
   // }, []);
-  }, [sortField, sortDirection, queryString]);
+  }, [sortField, sortDirection, queryString, encodeUrl]);
 
   const addTodo = async (newTodo) => {
     const payload = {
@@ -86,13 +146,12 @@ function App() {
     }
 
     try {
-      setIsSaving(true);
+      dispatch({ type: todoActions.startRequest })
       const resp = await fetch(encodeUrl(), options);
       //-- Check for errors in response
       checkHttpResponse(resp);
 
       const { records } = await resp.json();
-
       const savedTodo = {
         id: records[0].id,
         ...records[0].fields,
@@ -101,17 +160,16 @@ function App() {
       if (!records[0].fields.isCompleted) {
         savedTodo.isCompleted = false;
       }
-      setTodoList([...todoList, savedTodo]);
-      setErrorMsg('');
+      dispatch({ type: todoActions.addTodo, payload: savedTodo });
     } catch(error) {
-        setErrorMsg(error.message)
+      dispatch({ type: todoActions.setLoadError, payload: error.message })
     } finally {
-        setIsSaving(false);
+      dispatch({ type: todoActions.endRequest })
     }
   }
 
   const completeTodo = async (id) => {
-    const originalTodo = todoList.find((todo) => todo.id === id);
+    const originalTodo = todoState.todoList.find((todo) => todo.id === id);
 
     const payload = {
       records: [
@@ -132,39 +190,27 @@ function App() {
     };
 
     // Set complete - Optimistic approach
-    const updatedTodos = todoList.map((todo) => {
-      if (todo.id === id) {
-        todo.isCompleted = true;
-      }
-      return todo;
-    });
-    setTodoList([...updatedTodos])
+    dispatch({ type: todoActions.completeTodo, payload: id});
+    dispatch({ type: todoActions.startRequest });
 
     try {
-      setIsSaving(true);
       const resp = await fetch(encodeUrl(), options);
 
       //-- Check for errors in response
       checkHttpResponse(resp);
-      setErrorMsg('');
+      dispatch({ type: todoActions.clearError });
     } catch (error) {
-        setErrorMsg(`${error.message} Reverting todo...`);
+        dispatch({ type: todoActions.setLoadError, payload: `${error.message} Reverting todo...` })
         //-- Revert data when having data write error
         //-- Only need to change isComplete to false
-        const restoredTodos = todoList.map((todo) => {
-          if (todo.id === id) {
-            return { ...todo, isCompleted: false };
-          }
-          return todo;
-        });
-        setTodoList([...restoredTodos]);
+        dispatch({ type: todoActions.revertTodo, payload: id });
     } finally {
-        setIsSaving(false);
+        dispatch({ type: todoActions.endRequest });
     }
   }
 
   const updateTodo = async (editedTodo) => {
-    const originalTodo = todoList.find((todo) => todo.id === editedTodo.id);
+    const originalTodo = todoState.todoList.find((todo) => todo.id === editedTodo.id);
 
     const payload = {
       records: [
@@ -185,73 +231,69 @@ function App() {
     }
 
     //-- Optimistic update
-    const updatedTodos = todoList.map((todo)=> {
-      if (todo.id === editedTodo.id) {
-        return {...editedTodo};
-      }
-      return {...todo};
-    })
-    setTodoList([...updatedTodos]);
+    dispatch({ type: todoActions.updateTodo, payload: editedTodo });
+    dispatch({ type: todoActions.startRequest });
 
     try {
-      setIsSaving(true);
       const resp = await fetch(encodeUrl(), options);
 
       //-- Check for errors in response
       checkHttpResponse(resp);
-      setErrorMsg('');
+      dispatch({ type: todoActions.clearError });
     } catch(error) {
-        setErrorMsg(`${error.message} Reverting todo...`);
+        dispatch({ type: todoActions.setLoadError, payload: `${error.message} Reverting todo...` });
 
-        //-- Error - revert todo
-        const restoredTodos = todoList.map((todo) => {
-          if (todo.id === originalTodo.id) {
-            return {...originalTodo};
-          } 
-          return {...todo};
-        });
-        setTodoList([...restoredTodos]);
+        //-- Error: revert todo
+        dispatch({ type: todoActions.revertTodo, payload: originalTodo });
     } finally {
-        setIsSaving(false);
+        dispatch({ type: todoActions.endRequest });
     }
   }
 
   function dimissErrorHandler() {
-    setErrorMsg('');
+    dispatch({ type: todoActions.clearError });
   }
 
   return (
     <div>
-      <h1>Todo List</h1>
-      <div className='app-columns'>
-        <div id='menu-column'>
-          <TodosViewForm 
-            sortDirection={sortDirection}
-            setSortDirection={setSortDirection}
-            sortField={sortField}
-            setSortField={setSortField}
-            queryString={queryString}
-            setQueryString={setQueryString}
-          />
-        </div>
-        <div id='content-column'>
-          <TodoForm onAddTodo={addTodo} isSaving={isSaving} />
-          <TodoList
-            todoList={todoList}
-            onCompleteTodo={completeTodo}
-            onUpdateTodo={updateTodo}
-            isLoading={isLoading}
-          />
-        </div>
-      </div>
-      <hr />
-      {errorMsg && (
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div className={classes.errorMessage}>
-          <p>{errorMsg}</p>
-          <StyledButton type='button' onClick={dimissErrorHandler}>Dismiss</StyledButton>
-        </div> 
+      <Header title={title}/>
+      <Routes>
+        <Route path="/"
+          element={
+            <div>
+              <TodosPage 
+                todoList={currTodoList}
+                isSaving={todoState.isSaving}
+                isLoading={todoState.isLoading}
+                sortDirection={sortDirection}
+                setSortDirection={setSortDirection}
+                sortField={sortField}
+                setSortField={setSortField}
+                queryString={queryString}
+                setQueryString={setQueryString}
+                addTodo={addTodo}
+                completeTodo={completeTodo}
+                updateTodo={updateTodo}
+                onPreviousPage={handlePreviousPage}
+                onNextPage={handleNextPage}
+                currentPage={currentPage}
+                totalPages={totalPages}
+              />
+            </div>
+          }
+        />
+        <Route path="/about" element={<AboutPage/>} />
+        <Route path="*" element={<NotFound/>} />
+      </Routes>
 
+
+      {todoState.errorMsg && (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <hr />
+          <div className={classes.errorMessage}>
+            <p>{todoState.errorMsg}</p>
+            <StyledButton type='button' onClick={dimissErrorHandler}>Dismiss</StyledButton>
+          </div> 
         </div>
       )}
     </div>
